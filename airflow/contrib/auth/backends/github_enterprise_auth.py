@@ -1,11 +1,11 @@
 # Copyright 2015 Matthew Pelland (matt@pelland.io)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,7 @@ from flask import url_for, redirect, request
 
 from flask_oauthlib.client import OAuth
 
+import airflow
 from airflow import models, configuration, settings
 from airflow.configuration import AirflowConfigException
 
@@ -164,7 +165,7 @@ class GHEAuthBackend(object):
         if not userid or userid == 'None':
             return None
 
-        session = settings.Session()
+        session = airflow.Session()
         user = session.query(models.User).filter(
             models.User.id == int(userid)).first()
         session.expunge_all()
@@ -196,7 +197,7 @@ class GHEAuthBackend(object):
             _log.exception('')
             return redirect(url_for('airflow.noaccess'))
 
-        session = settings.Session()
+        session = airflow.Session()
 
         user = session.query(models.User).filter(
             models.User.username == username).first()

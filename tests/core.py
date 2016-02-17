@@ -22,7 +22,7 @@ from airflow.models import Variable
 
 configuration.test_mode()
 from airflow import (
-    jobs, models, DAG, utils, operators, hooks, macros, settings, Session)
+    jobs, models, DAG, utils, operators, hooks, macros, Session)
 from airflow.hooks import BaseHook
 from airflow.bin import cli
 from airflow.www import app as application
@@ -96,6 +96,7 @@ class CoreTest(unittest.TestCase):
         Test scheduling a dag where there is a prior DagRun
         which has the same run_id as the next run should have
         """
+        session = Session()
         delta = timedelta(hours=1)
         dag = DAG(TEST_DAG_ID+'test_schedule_dag_fake_scheduled_previous',
                 schedule_interval=delta,
@@ -110,8 +111,9 @@ class CoreTest(unittest.TestCase):
                     execution_date=DEFAULT_DATE,
                     state=utils.State.SUCCESS,
                     external_trigger=True)
-        settings.Session().add(trigger)
-        settings.Session().commit()
+        session.add(trigger)
+        session.commit()
+        session.close()
         dag_run = scheduler.schedule_dag(dag)
         assert dag_run is not None
         assert dag_run.dag_id == dag.dag_id
@@ -183,7 +185,7 @@ class CoreTest(unittest.TestCase):
         from datetime import datetime
         FakeDatetime.now = classmethod(lambda cls: datetime(2016, 1, 1))
 
-        session = settings.Session()
+        session = Session()
         delta = timedelta(days=1)
         start_date = DEFAULT_DATE
         runs = 365
