@@ -37,13 +37,10 @@ from pygments import highlight, lexers
 from pygments.formatters import HtmlFormatter
 
 import airflow
-from airflow import models
-from airflow.settings import Session
+from airflow import models, settings, utils
 from airflow import configuration as conf
-from airflow import utils
 from airflow.utils import AirflowException
 from airflow.www import utils as wwwutils
-from airflow import settings
 from airflow.models import State
 
 from airflow.www.forms import DateTimeForm, DateTimeWithNumRunsForm
@@ -239,7 +236,7 @@ class Airflow(BaseView):
     @wwwutils.gzipped
     # @cache.cached(timeout=3600, key_prefix=wwwutils.make_cache_key)
     def chart_data(self):
-        session = settings.Session()
+        session = airflow.Session()
         chart_id = request.args.get('chart_id')
         csv = request.args.get('csv') == "true"
         chart = session.query(models.Chart).filter_by(id=chart_id).first()
@@ -506,7 +503,7 @@ class Airflow(BaseView):
     @expose('/chart')
     @data_profiling_required
     def chart(self):
-        session = settings.Session()
+        session = airflow.Session()
         chart_id = request.args.get('chart_id')
         embed = request.args.get('embed')
         chart = session.query(models.Chart).filter_by(id=chart_id).first()
@@ -549,7 +546,7 @@ class Airflow(BaseView):
             if not dag.is_subdag:
                 dag_ids.append(dag.dag_id)
         TI = models.TaskInstance
-        session = Session()
+        session = airflow.Session()
         qry = (
             session.query(TI.dag_id, TI.state, sqla.func.count(TI.task_id))
                 .filter(TI.task_id.in_(task_ids))
@@ -604,7 +601,7 @@ class Airflow(BaseView):
         dag = dagbag.get_dag(dag_id)
         title = "DAG details"
 
-        session = settings.Session()
+        session = airflow.Session()
         TI = models.TaskInstance
         states = (
             session.query(TI.state, sqla.func.count(TI.dag_id))
@@ -737,7 +734,7 @@ class Airflow(BaseView):
         loc = loc.format(**locals())
         log = ""
         TI = models.TaskInstance
-        session = Session()
+        session = airflow.Session()
         dttm = dateutil.parser.parse(execution_date)
         ti = session.query(TI).filter(
             TI.dag_id == dag_id, TI.task_id == task_id,
@@ -943,7 +940,7 @@ class Airflow(BaseView):
     @expose('/blocked')
     @login_required
     def blocked(self):
-        session = settings.Session()
+        session = airflow.Session()
         DR = models.DagRun
         dags = (
             session.query(DR.dag_id, sqla.func.count(DR.id))
@@ -984,7 +981,7 @@ class Airflow(BaseView):
         MAX_PERIODS = 1000
 
         # Flagging tasks as successful
-        session = settings.Session()
+        session = airflow.Session()
         task_ids = [task_id]
         end_date = ((dag.latest_execution_date or datetime.now())
                     if future else execution_date)
@@ -1091,7 +1088,7 @@ class Airflow(BaseView):
                 include_downstream=False,
                 include_upstream=True)
 
-        session = settings.Session()
+        session = airflow.Session()
 
         base_date = request.args.get('base_date')
         num_runs = request.args.get('num_runs')
@@ -1199,7 +1196,7 @@ class Airflow(BaseView):
     @wwwutils.gzipped
     @wwwutils.action_logging
     def graph(self):
-        session = settings.Session()
+        session = airflow.Session()
         dag_id = request.args.get('dag_id')
         blur = conf.getboolean('webserver', 'demo_mode')
         arrange = request.args.get('arrange', "LR")
@@ -1310,7 +1307,7 @@ class Airflow(BaseView):
     @login_required
     @wwwutils.action_logging
     def duration(self):
-        session = settings.Session()
+        session = airflow.Session()
         dag_id = request.args.get('dag_id')
         dag = dagbag.get_dag(dag_id)
         base_date = request.args.get('base_date')
@@ -1370,7 +1367,7 @@ class Airflow(BaseView):
     @login_required
     @wwwutils.action_logging
     def landing_times(self):
-        session = settings.Session()
+        session = airflow.Session()
         dag_id = request.args.get('dag_id')
         dag = dagbag.get_dag(dag_id)
         base_date = request.args.get('base_date')
@@ -1432,7 +1429,7 @@ class Airflow(BaseView):
     def paused(self):
         DagModel = models.DagModel
         dag_id = request.args.get('dag_id')
-        session = settings.Session()
+        session = airflow.Session()
         orm_dag = session.query(
             DagModel).filter(DagModel.dag_id == dag_id).first()
         if request.args.get('is_paused') == 'false':
@@ -1452,7 +1449,7 @@ class Airflow(BaseView):
     def refresh(self):
         DagModel = models.DagModel
         dag_id = request.args.get('dag_id')
-        session = settings.Session()
+        session = airflow.Session()
         orm_dag = session.query(
             DagModel).filter(DagModel.dag_id == dag_id).first()
 
@@ -1479,7 +1476,7 @@ class Airflow(BaseView):
     @wwwutils.action_logging
     def gantt(self):
 
-        session = settings.Session()
+        session = airflow.Session()
         dag_id = request.args.get('dag_id')
         dag = dagbag.get_dag(dag_id)
         demo_mode = conf.getboolean('webserver', 'demo_mode')
@@ -1559,7 +1556,7 @@ class Airflow(BaseView):
     @login_required
     @wwwutils.action_logging
     def task_instances(self):
-        session = settings.Session()
+        session = airflow.Session()
         dag_id = request.args.get('dag_id')
         dag = dagbag.get_dag(dag_id)
 
@@ -1583,7 +1580,7 @@ class Airflow(BaseView):
             if request.method == 'POST':
                 data = request.json
                 if data:
-                    session = settings.Session()
+                    session = airflow.Session()
                     var = models.Variable(key=form, val=json.dumps(data))
                     session.add(var)
                     session.commit()
@@ -1601,7 +1598,7 @@ class HomeView(AdminIndexView):
     @expose("/")
     @login_required
     def index(self):
-        session = Session()
+        session = airflow.Session()
         DM = models.DagModel
         qry = None
         # filter the dags if filter_by_owner and current user is not superuser
@@ -1648,7 +1645,7 @@ class QueryView(wwwutils.DataProfilingMixin, BaseView):
     @expose('/')
     @wwwutils.gzipped
     def query(self):
-        session = settings.Session()
+        session = airflow.Session()
         dbs = session.query(models.Connection).order_by(
             models.Connection.conn_id).all()
         session.expunge_all()
@@ -1817,6 +1814,7 @@ class ChartModelView(wwwutils.DataProfilingMixin, AirflowModelView):
         'show_sql': "Display the SQL Statement",
         'default_params': "Default Parameters",
     }
+    session = airflow.Session()
     form_choices = {
         'chart_type': [
             ('line', 'Line Chart'),
@@ -1837,11 +1835,13 @@ class ChartModelView(wwwutils.DataProfilingMixin, AirflowModelView):
         'conn_id': [
             (c.conn_id, c.conn_id)
             for c in (
-                Session().query(models.Connection.conn_id)
+                session.query(models.Connection.conn_id)
                     .group_by(models.Connection.conn_id)
             )
             ]
     }
+    session.commit()
+    session.close()
 
     def on_model_change(self, form, model, is_created=True):
         if model.iteration_no is None:

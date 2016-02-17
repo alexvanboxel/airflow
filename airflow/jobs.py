@@ -19,6 +19,7 @@ from time import sleep
 from sqlalchemy import Column, Integer, String, DateTime, func, Index, or_
 from sqlalchemy.orm.session import make_transient
 
+import airflow
 from airflow import executors, models, settings, utils
 from airflow import configuration as conf
 from airflow.utils import AirflowException, State, LoggingMixin
@@ -80,7 +81,7 @@ class BaseJob(Base, LoggingMixin):
         )
 
     def kill(self):
-        session = settings.Session()
+        session = airflow.Session()
         job = session.query(BaseJob).filter(BaseJob.id == self.id).first()
         job.end_date = datetime.now()
         try:
@@ -120,7 +121,7 @@ class BaseJob(Base, LoggingMixin):
         heart rate. If you go over 60 seconds before calling it, it won't
         sleep at all.
         '''
-        session = settings.Session()
+        session = airflow.Session()
         job = session.query(BaseJob).filter(BaseJob.id == self.id).first()
 
         if job.state == State.SHUTDOWN:
@@ -144,7 +145,7 @@ class BaseJob(Base, LoggingMixin):
     def run(self):
         Stats.incr(self.__class__.__name__.lower()+'_start', 1, 1)
         # Adding an entry in the DB
-        session = settings.Session()
+        session = airflow.Session()
         self.state = State.RUNNING
         session.add(self)
         session.commit()
@@ -343,7 +344,7 @@ class SchedulerJob(BaseJob):
             session.close()
 
     def import_errors(self, dagbag):
-        session = settings.Session()
+        session = airflow.Session()
         session.query(models.ImportError).delete()
         for filename, stacktrace in list(dagbag.import_errors.items()):
             session.add(models.ImportError(
@@ -359,7 +360,7 @@ class SchedulerJob(BaseJob):
         """
         if dag.schedule_interval:
             DagRun = models.DagRun
-            session = settings.Session()
+            session = airflow.Session()
             qry = session.query(DagRun).filter(
                 DagRun.dag_id == dag.dag_id,
                 DagRun.external_trigger == False,
@@ -436,7 +437,7 @@ class SchedulerJob(BaseJob):
         """
         TI = models.TaskInstance
         DagModel = models.DagModel
-        session = settings.Session()
+        session = airflow.Session()
 
         # picklin'
         pickle_id = None
@@ -662,7 +663,7 @@ class SchedulerJob(BaseJob):
             except Exception as deep_e:
                 self.logger.exception(deep_e)
             finally:
-                settings.Session.remove()
+                airflow.Session.remove()
         executor.end()
 
     def heartbeat_callback(self):
@@ -704,7 +705,7 @@ class BackfillJob(BaseJob):
         """
         Runs a dag for a specified date range.
         """
-        session = settings.Session()
+        session = airflow.Session()
 
         start_date = self.bf_start_date
         end_date = self.bf_end_date
@@ -875,7 +876,7 @@ class LocalTaskJob(BaseJob):
         # Suicide pill
         TI = models.TaskInstance
         ti = self.task_instance
-        session = settings.Session()
+        session = airflow.Session()
         state = session.query(TI.state).filter(
             TI.dag_id==ti.dag_id, TI.task_id==ti.task_id,
             TI.execution_date==ti.execution_date).scalar()
