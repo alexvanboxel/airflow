@@ -143,7 +143,7 @@ s3_log_folder = None
 
 # The executor class that airflow should use. Choices include
 # SequentialExecutor, LocalExecutor, CeleryExecutor
-executor = SequentialExecutor
+executor = LocalExecutor
 
 # The SqlAlchemy connection string to the metadata database.
 # SqlAlchemy supports many different database engine, more information
