@@ -2109,7 +2109,7 @@ class LocalTaskJob(BaseJob):
                                 "{self.task_runner.process.pid}. "
                                 "Taking the poison pill. So long."
                                 .format(**locals()))
-                raise AirflowException("Another worker/process is running this job")
+                # raise AirflowException("Another worker/process is running this job")
         elif (self.was_running
               and self.task_runner.return_code() is None
               and hasattr(self.task_runner, 'process')):
