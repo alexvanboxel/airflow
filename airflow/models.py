@@ -261,6 +261,7 @@ class DagBag(BaseDagBag, LoggingMixin):
 
             with timeout(configuration.getint('core', "DAGBAG_IMPORT_TIMEOUT")):
                 try:
+                    self.logger.info("IMPORT {} : {}".format(mod_name, filepath))
                     m = imp.load_source(mod_name, filepath)
                     mods.append(m)
                 except Exception as e:
