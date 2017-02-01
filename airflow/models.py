@@ -264,7 +264,7 @@ class DagBag(BaseDagBag, LoggingMixin):
                     self.logger.info("IMPORT {} : {}".format(mod_name, filepath))
                     for i in sys.path:
                         self.logger.info("sys.path entry: " + i)
-                    m = imp.load_source(mod_name, filepath)
+                    # m = imp.load_source(mod_name, filepath)
                     mods.append(m)
                 except Exception as e:
                     self.logger.exception("Failed to import: " + filepath)
