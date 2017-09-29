@@ -17,6 +17,7 @@ import time
 import uuid
 
 from apiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 from airflow.contrib.hooks.gcp_api_base_hook import GoogleCloudBaseHook
 
@@ -35,27 +36,33 @@ class _DataProcJob:
 
     def wait_for_done(self):
         while True:
-            self.job = self.dataproc_api.projects().regions().jobs().get(
-                projectId=self.project_id,
-                region='global',
-                jobId=self.job_id).execute()
-            if 'ERROR' == self.job['status']['state']:
-                print(str(self.job))
-                logging.error('DataProc job %s has errors', self.job_id)
-                logging.error(self.job['status']['details'])
-                logging.debug(str(self.job))
-                return False
-            if 'CANCELLED' == self.job['status']['state']:
-                print(str(self.job))
-                logging.warning('DataProc job %s is cancelled', self.job_id)
-                if 'details' in self.job['status']:
-                    logging.warning(self.job['status']['details'])
-                logging.debug(str(self.job))
-                return False
-            if 'DONE' == self.job['status']['state']:
-                return True
-            logging.debug('DataProc job %s is %s', self.job_id,
-                          str(self.job['status']['state']))
+            try:
+                self.job = self.dataproc_api.projects().regions().jobs().get(
+                    projectId=self.project_id,
+                    region='global',
+                    jobId=self.job_id).execute()
+                if 'ERROR' == self.job['status']['state']:
+                    print(str(self.job))
+                    logging.error('DataProc job %s has errors', self.job_id)
+                    logging.error(self.job['status']['details'])
+                    logging.debug(str(self.job))
+                    return False
+                if 'CANCELLED' == self.job['status']['state']:
+                    print(str(self.job))
+                    logging.warning('DataProc job %s is cancelled', self.job_id)
+                    if 'details' in self.job['status']:
+                        logging.warning(self.job['status']['details'])
+                    logging.debug(str(self.job))
+                    return False
+                if 'DONE' == self.job['status']['state']:
+                    return True
+                logging.debug('DataProc job %s is %s', self.job_id,
+                              str(self.job['status']['state']))
+            except HttpError as e:
+                status = e.resp.status
+                if status not in [503, 504]:
+                    raise e
+                logging.warning('DataProc job returned HTTP %s, continue', status)
             time.sleep(5)
 
     def raise_error(self, message=None):

@@ -19,6 +19,7 @@ import time
 import uuid
 
 from apiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 from airflow.contrib.hooks.gcp_api_base_hook import GoogleCloudBaseHook
 
@@ -58,24 +59,31 @@ class _DataflowJob(object):
 
     def wait_for_done(self):
         while True:
-            if 'currentState' in self._job:
-                if 'JOB_STATE_DONE' == self._job['currentState']:
-                    return True
-                elif 'JOB_STATE_FAILED' == self._job['currentState']:
-                    raise Exception("Google Cloud Dataflow job {} has failed.".format(
-                        self._job['name']))
-                elif 'JOB_STATE_CANCELLED' == self._job['currentState']:
-                    raise Exception("Google Cloud Dataflow job {} was cancelled.".format(
-                        self._job['name']))
-                elif 'JOB_STATE_RUNNING' == self._job['currentState']:
-                    time.sleep(10)
+            try:
+                if 'currentState' in self._job:
+                    if 'JOB_STATE_DONE' == self._job['currentState']:
+                        return True
+                    elif 'JOB_STATE_FAILED' == self._job['currentState']:
+                        raise Exception("Google Cloud Dataflow job {} has failed.".format(
+                            self._job['name']))
+                    elif 'JOB_STATE_CANCELLED' == self._job['currentState']:
+                        raise Exception("Google Cloud Dataflow job {} was cancelled.".format(
+                            self._job['name']))
+                    elif 'JOB_STATE_RUNNING' == self._job['currentState']:
+                        time.sleep(10)
+                    else:
+                        logging.debug(str(self._job))
+                        raise Exception(
+                            "Google Cloud Dataflow job {} was unknown state: {}".format(
+                                self._job['name'], self._job['currentState']))
                 else:
-                    logging.debug(str(self._job))
-                    raise Exception(
-                        "Google Cloud Dataflow job {} was unknown state: {}".format(
-                            self._job['name'], self._job['currentState']))
-            else:
-                time.sleep(15)
+                    time.sleep(15)
+            except HttpError as e:
+                status = e.resp.status
+                if status not in [503, 504]:
+                    raise e
+                logging.warning('DataFlow job returned HTTP %s, continue', status)
+                time.sleep(60)
 
             self._job = self._get_job()
 
