@@ -204,41 +204,43 @@
       function confirmTriggerDag(dag_id){
           return confirm("Are you sure you want to run '"+dag_id+"' now?");
       }
-      all_dags = $("[id^=toggle]");
-      $.each(all_dags, function(i,v) {
-        $(v).change (function() {
-          var dag_id =  $(v).attr('dag_id');
-          if ($(v).prop('checked')) {
-            is_paused = 'true'
-          } else {
-            is_paused = 'false'
-          }
-          url = 'airflow/paused?is_paused=' + is_paused + '&dag_id=' + dag_id;
-          $.post(url);
-        });
-      });
-      $('#dags').dataTable({
-        "iDisplayLength": 500,
-        "bSort": false,
-      });
+
+
       $("#main_content").show(250);
-      diameter = 25;
-      circle_margin = 4;
-      stroke_width = 2;
-      stroke_width_hover = 6;
-      d3.json("{{ url_for('airflow.blocked') }}", function(error, json) {
-        $.each(json, function() {
-          $('.label.schedule.' + this.dag_id)
-          .attr('title', this.active_dag_run + '/' + this.max_active_runs + ' active dag runs')
-          .tooltip();
-          if(this.active_dag_run >= this.max_active_runs) {
-            $('.label.schedule.' + this.dag_id)
-            .css('background-color', 'red');
-          }
+      var diameter = 25;
+      var circle_margin = 4;
+      var stroke_width = 2;
+      var stroke_width_hover = 6;
+
+      function changeStats() {
+
+        var all_dags = $("[id^=toggle]");
+        var is_paused;
+        $.each(all_dags, function(i,v) {
+          $(v).change (function() {
+            var dag_id =  $(v).attr('dag_id');
+            if ($(v).prop('checked')) {
+              is_paused = 'true'
+            } else {
+              is_paused = 'false'
+            }
+            var url = 'airflow/paused?is_paused=' + is_paused + '&dag_id=' + dag_id;
+            $.post(url);
+          });
         });
-      });
-      d3.json("{{ url_for('airflow.dag_stats') }}", function(error, json) {
-        for(var dag_id in json) {
+        d3.json("{{ url_for('airflow.blocked') }}", function (error, json) {
+          $.each(json, function () {
+            $('.label.schedule.' + this.dag_id)
+              .attr('title', this.active_dag_run + '/' + this.max_active_runs + ' active dag runs')
+              .tooltip();
+            if (this.active_dag_run >= this.max_active_runs) {
+              $('.label.schedule.' + this.dag_id)
+                .css('background-color', 'red');
+            }
+          });
+        });
+        d3.json("{{ url_for('airflow.dag_stats') }}", function (error, json) {
+          for (var dag_id in json) {
             states = json[dag_id];
             g = d3.select('svg#dag-run-' + dag_id)
               .attr('height', diameter + (stroke_width_hover * 2))
@@ -247,9 +249,9 @@
               .data(states)
               .enter()
               .append('g')
-              .attr('transform', function(d, i) {
-                x = (i * (diameter + circle_margin)) + (diameter/2 + circle_margin);
-                y = (diameter/2) + stroke_width_hover;
+              .attr('transform', function (d, i) {
+                x = (i * (diameter + circle_margin)) + (diameter / 2 + circle_margin);
+                y = (diameter / 2) + stroke_width_hover;
                 return 'translate(' + x + ',' + y + ')';
               });
 
@@ -259,65 +261,71 @@
               .attr('vertical-align', 'middle')
               .attr('font-size', 8)
               .attr('y', 3)
-              .text(function(d){ return d.count > 0 ? d.count : ''; });
+              .text(function (d) {
+                return d.count > 0 ? d.count : '';
+              });
 
             g.append('circle')
-              .attr('stroke-width', function(d) {
-                  if (d.count > 0)
-                    return stroke_width;
-                  else {
-                    return 1;
-                  }
-              })
-              .attr('stroke', function(d) {
-                  if (d.count > 0)
-                    return d.color;
-                  else {
-                    return 'gainsboro';
-                  }
-              })
-              .attr('fill-opacity', 0)
-              .attr('r', diameter/2)
-              .attr('title', function(d) {return d.state})
-              .attr('style', function(d) {
+              .attr('stroke-width', function (d) {
                 if (d.count > 0)
-                    return"cursor:pointer;"
-              })
-              .on('click', function(d, i) {
-                  if (d.count > 0)
-                    window.location = "/admin/dagrun/?flt1_dag_id_equals=" + d.dag_id + "&flt2_state_equals=" + d.state;
-              })
-              .on('mouseover', function(d, i) {
-                if (d.count > 0) {
-                    d3.select(this).transition().duration(400)
-                      .attr('fill-opacity', 0.3)
-                      .style("stroke-width", stroke_width_hover);
+                  return stroke_width;
+                else {
+                  return 1;
                 }
               })
-              .on('mouseout', function(d, i) {
+              .attr('stroke', function (d) {
+                if (d.count > 0)
+                  return d.color;
+                else {
+                  return 'gainsboro';
+                }
+              })
+              .attr('fill-opacity', 0)
+              .attr('r', diameter / 2)
+              .attr('title', function (d) {
+                return d.state
+              })
+              .attr('style', function (d) {
+                if (d.count > 0)
+                  return "cursor:pointer;"
+              })
+              .on('click', function (d, i) {
+                if (d.count > 0)
+                  window.location = "/admin/dagrun/?flt1_dag_id_equals=" + d.dag_id + "&flt2_state_equals=" + d.state;
+              })
+              .on('mouseover', function (d, i) {
                 if (d.count > 0) {
-                    d3.select(this).transition().duration(400)
-                      .attr('fill-opacity', 0)
-                      .style("stroke-width", stroke_width);
+                  d3.select(this).transition().duration(400)
+                    .attr('fill-opacity', 0.3)
+                    .style("stroke-width", stroke_width_hover);
+                }
+              })
+              .on('mouseout', function (d, i) {
+                if (d.count > 0) {
+                  d3.select(this).transition().duration(400)
+                    .attr('fill-opacity', 0)
+                    .style("stroke-width", stroke_width);
                 }
               })
               .style("opacity", 0)
               .transition()
               .duration(500)
-              .delay(function(d, i){return i*50;})
+              .delay(function (d, i) {
+                return i * 50;
+              })
               .style("opacity", 1);
             d3.select("#loading").remove();
-        }
-        $("#pause_header").tooltip();
-        $("#statuses_info").tooltip();
+          }
+          $("#pause_header").tooltip();
+          $("#statuses_info").tooltip();
 
-        $("circle").tooltip({
-          html: true,
-          container: "body",
+          $("circle").tooltip({
+            html: true,
+            container: "body",
+          });
         });
-      });
-      d3.json("{{ url_for('airflow.task_stats') }}", function(error, json) {
-        for(var dag_id in json) {
+        d3.json("{{ url_for('airflow.task_stats') }}", function (error, json) {
+          for (var dag_id in json) {
             states = json[dag_id];
             g = d3.select('svg#task-run-' + dag_id)
               .attr('height', diameter + (stroke_width_hover * 2))
@@ -326,9 +334,9 @@
               .data(states)
               .enter()
               .append('g')
-              .attr('transform', function(d, i) {
-                x = (i * (diameter + circle_margin)) + (diameter/2 + circle_margin);
-                y = (diameter/2) + stroke_width_hover;
+              .attr('transform', function (d, i) {
+                x = (i * (diameter + circle_margin)) + (diameter / 2 + circle_margin);
+                y = (diameter / 2) + stroke_width_hover;
                 return 'translate(' + x + ',' + y + ')';
               });
 
@@ -338,62 +346,77 @@
               .attr('vertical-align', 'middle')
               .attr('font-size', 8)
               .attr('y', 3)
-              .text(function(d){ return d.count > 0 ? d.count : ''; });
+              .text(function (d) {
+                return d.count > 0 ? d.count : '';
+              });
 
             g.append('circle')
-              .attr('stroke-width', function(d) {
-                  if (d.count > 0)
-                    return stroke_width;
-                  else {
-                    return 1;
-                  }
-              })
-              .attr('stroke', function(d) {
-                  if (d.count > 0)
-                    return d.color;
-                  else {
-                    return 'gainsboro';
-                  }
-              })
-              .attr('fill-opacity', 0)
-              .attr('r', diameter/2)
-              .attr('title', function(d) {return d.state})
-              .attr('style', function(d) {
+              .attr('stroke-width', function (d) {
                 if (d.count > 0)
-                    return"cursor:pointer;"
-              })
-              .on('click', function(d, i) {
-                  if (d.count > 0)
-                    window.location = "/admin/taskinstance/?flt1_dag_id_equals=" + d.dag_id + "&flt2_state_equals=" + d.state;
-              })
-              .on('mouseover', function(d, i) {
-                if (d.count > 0) {
-                    d3.select(this).transition().duration(400)
-                      .attr('fill-opacity', 0.3)
-                      .style("stroke-width", stroke_width_hover);
+                  return stroke_width;
+                else {
+                  return 1;
                 }
               })
-              .on('mouseout', function(d, i) {
+              .attr('stroke', function (d) {
+                if (d.count > 0)
+                  return d.color;
+                else {
+                  return 'gainsboro';
+                }
+              })
+              .attr('fill-opacity', 0)
+              .attr('r', diameter / 2)
+              .attr('title', function (d) {
+                return d.state
+              })
+              .attr('style', function (d) {
+                if (d.count > 0)
+                  return "cursor:pointer;"
+              })
+              .on('click', function (d, i) {
+                if (d.count > 0)
+                  window.location = "/admin/taskinstance/?flt1_dag_id_equals=" + d.dag_id + "&flt2_state_equals=" + d.state;
+              })
+              .on('mouseover', function (d, i) {
                 if (d.count > 0) {
-                    d3.select(this).transition().duration(400)
-                      .attr('fill-opacity', 0)
-                      .style("stroke-width", stroke_width);
+                  d3.select(this).transition().duration(400)
+                    .attr('fill-opacity', 0.3)
+                    .style("stroke-width", stroke_width_hover);
+                }
+              })
+              .on('mouseout', function (d, i) {
+                if (d.count > 0) {
+                  d3.select(this).transition().duration(400)
+                    .attr('fill-opacity', 0)
+                    .style("stroke-width", stroke_width);
                 }
               })
               .style("opacity", 0)
               .transition()
               .duration(500)
-              .delay(function(d, i){return i*50;})
+              .delay(function (d, i) {
+                return i * 50;
+              })
               .style("opacity", 1);
             d3.select("#loading").remove();
-        }
-        $("#pause_header").tooltip();
-        $("#statuses_info").tooltip();
+          }
+          $("#pause_header").tooltip();
+          $("#statuses_info").tooltip();
 
-        $("circle").tooltip({
-          html: true,
-          container: "body",
+          $("circle").tooltip({
+            html: true,
+            container: "body",
+          });
         });
-      });
+      }
+      $('#dags')
+        .on('init.dt', changeStats)
+        .on('search.dt', changeStats)
+        .on('page.dt', changeStats)
+        .dataTable({
+          "iDisplayLength": 25,
+          "bSort": false
+        });
   </script>
 {% endblock %}
