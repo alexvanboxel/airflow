@@ -204,27 +204,30 @@
       function confirmTriggerDag(dag_id){
           return confirm("Are you sure you want to run '"+dag_id+"' now?");
       }
-      all_dags = $("[id^=toggle]");
-      $.each(all_dags, function(i,v) {
-        $(v).change (function() {
-          var dag_id =  $(v).attr('dag_id');
-          if ($(v).prop('checked')) {
-            is_paused = 'true'
-          } else {
-            is_paused = 'false'
-          }
-          url = 'airflow/paused?is_paused=' + is_paused + '&dag_id=' + dag_id;
-          $.post(url);
-        });
-      });
+
 
       $("#main_content").show(250);
-      diameter = 25;
-      circle_margin = 4;
-      stroke_width = 2;
-      stroke_width_hover = 6;
+      var diameter = 25;
+      var circle_margin = 4;
+      var stroke_width = 2;
+      var stroke_width_hover = 6;
 
       function changeStats() {
+
+        var all_dags = $("[id^=toggle]");
+        var is_paused;
+        $.each(all_dags, function(i,v) {
+          $(v).change (function() {
+            var dag_id =  $(v).attr('dag_id');
+            if ($(v).prop('checked')) {
+              is_paused = 'true'
+            } else {
+              is_paused = 'false'
+            }
+            var url = 'airflow/paused?is_paused=' + is_paused + '&dag_id=' + dag_id;
+            $.post(url);
+          });
+        });
         d3.json("{{ url_for('airflow.blocked') }}", function (error, json) {
           $.each(json, function () {
             $('.label.schedule.' + this.dag_id)
